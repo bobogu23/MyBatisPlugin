@@ -1,5 +1,4 @@
-package com.weihui.common.algorithm.util;
-
+package com.mybatis.plugin;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.cxf.common.util.CollectionUtils;
@@ -25,40 +24,47 @@ import java.util.List;
 import java.util.Properties;
 
 /**
- *<p>mybatis sql 格式化,记录执行时间拦截器</p>
+ * <p>mybatis sql 格式化,记录执行时间拦截器</p>
  * <p>使用方式:在mybatis 配置文件的sqlSessionFactory bean中设置plugins 属性.eg:
- *  <property name="plugins">
+ * <property name="plugins">
  * <array>
- * <bean class="com.weihui.finance.member.core.dal.common.SQLFormatInterceptor"/>
- *  </array>
+ * <bean class="com.mybatis.plugin.MybatisSQLFormatInterceptor"/>
+ * </array>
  * </property>
  * </p>
  * 或者 在 sqlSessionFactory 中引入 META-INF/spring/mybatis-config.xml <br>
- *  property name="configLocation" value="classpath:META-INF/spring/mybatis-config.xml" />
- * @author gushunbin
- *@version $Id: SQLFormatInterceptor.java, v 0.1 2017/7/24 18:14 gushunbin Exp $
+ * property name="configLocation" value="classpath:META-INF/spring/mybatis-config.xml" />
+ *
+ * @author StefenKu
+ * @version $Id: SQLFormatInterceptor.java, v 0.1 2017/7/24 18:14 StefenKu Exp $
  */
-@Intercepts({ @Signature(type = Executor.class, method = "query", args = { MappedStatement.class,
-                                                                           Object.class,
-                                                                           RowBounds.class,
-                                                                           ResultHandler.class }),
-              @Signature(type = Executor.class, method = "update", args = { MappedStatement.class,
-                                                                            Object.class })
+@Intercepts({@Signature(type = Executor.class, method = "query", args = {MappedStatement.class,
+        Object.class,
+        RowBounds.class,
+        ResultHandler.class}),
+        @Signature(type = Executor.class, method = "update", args = {MappedStatement.class,
+                Object.class})
 
 })
 public class MybatisSQLFormatInterceptor implements Interceptor {
-    private static final Logger LOGGER                  = LoggerFactory
-        .getLogger(MybatisSQLFormatInterceptor.class);
+    private static final Logger LOGGER = LoggerFactory
+            .getLogger(MybatisSQLFormatInterceptor.class);
 
-    private static final String DATE_PATTERN            = "yyyy-MM-dd HH:mm:ss";
-    private static final String DB_TIMESTAMP_PATTERN    = "yyyy-MM-dd HH24:MI:ss.ff";
+    private static final String DATE_PATTERN = "yyyy-MM-dd HH:mm:ss";
+    private static final String DB_TIMESTAMP_PATTERN = "yyyy-MM-dd HH24:MI:ss.ff";
 
-    /**查询sql,查询结果达到警告级别的数量**/
-    private int                 warnQueryResultNum      = 1000;
-    /**查询sql,查询结果达到警告级别的时间**/
-    private int                 warnQueryResultCostTime = 5 * 1000;
-    /**是否输出返回**/
-    private boolean             islogQueryResult;
+    /**
+     * 查询sql,查询结果达到警告级别的数量*
+     */
+    private int warnQueryResultNum = 1000;
+    /**
+     * 查询sql,查询结果达到警告级别的时间*
+     */
+    private int warnQueryResultCostTime = 5 * 1000;
+    /**
+     * 是否输出返回*
+     */
+    private boolean islogQueryResult;
 
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
@@ -88,7 +94,7 @@ public class MybatisSQLFormatInterceptor implements Interceptor {
 
                 //格式化 sql
                 sql = formatSql(sql, parameterObject, parameterMappingList, boundSql,
-                    configuration);
+                        configuration);
 
                 //如果是查询sql,统计查询结果数量
                 Method method = invocation.getMethod();
@@ -125,7 +131,7 @@ public class MybatisSQLFormatInterceptor implements Interceptor {
                 StringBuilder builder = new StringBuilder();
                 for (int i = 0; i < queryResult.size(); i++) {
                     builder.append(ToStringBuilder.reflectionToString(queryResult.get(i),
-                        ToStringStyle.SHORT_PREFIX_STYLE) + "\n\t");
+                            ToStringStyle.SHORT_PREFIX_STYLE) + "\n\t");
                 }
                 LOGGER.info("Execute sql result  : {}", builder);
             } else {
@@ -150,7 +156,7 @@ public class MybatisSQLFormatInterceptor implements Interceptor {
 
         // 不传参数的场景，直接把Sql美化一下返回出去
         if (parameterObject == null || parameterMappingList == null
-            || parameterMappingList.size() == 0) {
+                || parameterMappingList.size() == 0) {
             return sql;
         }
 
@@ -159,7 +165,7 @@ public class MybatisSQLFormatInterceptor implements Interceptor {
 
         try {
             sql = handleParameter(sql, parameterMappingList, boundSql, parameterObject,
-                configuration);
+                    configuration);
         } catch (Exception e) {
             LOGGER.error("sql format error:", e);
             // 占位符替换过程中出现异常，则返回没有替换过占位符但是格式美化过的sql，这样至少保证sql语句比BoundSql中的sql更好看
@@ -179,7 +185,7 @@ public class MybatisSQLFormatInterceptor implements Interceptor {
         TypeHandlerRegistry typeHandlerRegistry = configuration.getTypeHandlerRegistry();
 
         MetaObject metaObject = parameterObject == null ? null
-            : configuration.newMetaObject(parameterObject);
+                : configuration.newMetaObject(parameterObject);
         for (ParameterMapping parameterMapping : parameterMappingList) {
             Object propertyValue = null;
             if (parameterMapping.getMode() != ParameterMode.OUT) {
@@ -201,7 +207,7 @@ public class MybatisSQLFormatInterceptor implements Interceptor {
                 propertyValue = String.format("'%s'", propertyValue);
             } else if (propertyValue.getClass().isAssignableFrom(Date.class)) {
                 propertyValue = String.format("to_timestamp('%s', '%s')",
-                    getNewFormatDateString((Date) propertyValue), DB_TIMESTAMP_PATTERN);
+                        getNewFormatDateString((Date) propertyValue), DB_TIMESTAMP_PATTERN);
             }
 
             sql = sql.replaceFirst("\\?", propertyValue.toString());
